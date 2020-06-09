@@ -1,0 +1,13 @@
+Simulateur d'emprunt immobilier :
+Taux
+Durée
+Montant
+Option Apport Oui/Non et montant
+Type d'intérêt (variable/fixe ?)
+Revenu initial / capacité d'endettement
+
+Graphique avec la ventilation intérêt/capital remboursé (avec granularité au choix : mois ou année)
+
+Tableau d'amortissement avec optio d'exportation possible (mensuel/annuel)
+
+Option : Assurance emprunteur
