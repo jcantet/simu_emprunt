@@ -1,13 +1,26 @@
 Simulateur d'emprunt immobilier :
-Taux
-Durée
-Montant
-Option Apport Oui/Non et montant
-Type d'intérêt (variable/fixe ?)
-Revenu initial / capacité d'endettement
 
-Graphique avec la ventilation intérêt/capital remboursé (avec granularité au choix : mois ou année)
+Fonctionnalité : 
+- Libre choix des paramètres, avec valeur par défaut réaliste, et renvoi vers source d'infos
+- Comparaison de simulation (4 cas, 1 par ligne, tout voir sur la même page)
 
-Tableau d'amortissement avec optio d'exportation possible (mensuel/annuel)
+Paramètres :
+- Revenu disponible par mois (description pour préciser comment l'obtenir)
+- Apport
+- Taux
+- Durée de remboursement (en année)
+- Capital emprunté
+- Option Assurance Emprunteur. Si oui, taux à renseigner
 
-Option : Assurance emprunteur
+Indicateur (box):
+- Taux d'endettement --> box orange si au-delà de la capacité d'endettement, rouge si impossible
+- Montant de la mensualité avec entre parenthèse le montant de la mensualité max compte tenu du revenu
+
+Graphique :
+- Ventilation cout total emprunt : capital remboursé / intérêt payé / assurance payée --> avec étiquette des pourcentages et des montants (option avec ou sans le capital inclu si possible)
+- avec et sans approt pour voir la différence de cout. Eventuellement simulation de placement de l'appport pour voir sa rentabilité par rapport au coût
+
+Onglets :
+- Simulation de mensualité à partir de paramètres
+- Tableau d'amortissement avec option d'exportation possible (mensuel/annuel)
+
