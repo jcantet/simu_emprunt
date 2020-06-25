@@ -192,7 +192,7 @@ ggplot(data = data_test, aes(x = id, y = value, fill = type_montant))+
         capital_restant[i] <- capital_initial[i] - capital[i]
       }
       
-      df <- astibble(cbind(id,capital_initial,mensualite,capital,interet,capital_restant))
+      df <- as_tibble(cbind(id,capital_initial,mensualite,capital,interet,capital_restant))
       return(round(df,3))
     }
     
@@ -203,7 +203,7 @@ ggplot(data = data_test, aes(x = id, y = value, fill = type_montant))+
     
     
     
-# Test graphique
+# Test graphique ====
     data_cout_emprunt = tibble(
       Montant = c("Apport","Capital emprunté","Intérêt"),
       Valeur = c(40000,200000,21000))
@@ -225,3 +225,121 @@ ggplot(data = data_test, aes(x = id, y = value, fill = type_montant))+
              xaxis = list(title = ""),
              yaxis = list(title = ""))
   
+
+    
+    
+# Test du tableau avec plusieurs options de durée et de capital pour une même mensualité =====
+
+capital <- 200000
+tx <- 0.01
+duree <- 20
+
+data_emp <- simul_emprunt_v2(capital,tx,duree)
+
+# Mensualité ciblée :
+data_emp$mensualite[1]
+# Taux de référence par période
+tx_ref <- tibble(
+  duree = c(10,15,20,25,30),
+  taux = c(0.009, 0.010, 0.010, 0.015, 0.020),
+  capital = as.numeric(5),
+  interet = as.numeric(5)
+)
+
+# On cherche pour la même mensualité, ce qu'on peut emprunter le même capital 
+
+  # Formule mensualité
+  mensualite <- (capital * tx/12) / (1 - (1 + tx/12)**-(12*duree))
+
+  # Formule pour récupérer le capital pour une mensualité donnée
+  mensualite * (1 - (1 + tx/12)**(-12*duree)) / tx*12
+  
+  # Transformation en fonction pour le faire boucler sur différentes périodes
+  alt_capital <- function(mensualite){
+    
+    for (i in seq(1,5,1)){
+      # Capital possible
+      tx_ref[i,c("capital")] <- mensualite * (1 - (1 + tx_ref[i,c("taux")]/12)**(-12*tx_ref[i,c("duree")])) / tx_ref[i,c("taux")]*12
+      # Coût intérêt
+      tx_ref[i,c("interet")] <-12*tx_ref[i,c("duree")] * mensualite - tx_ref[i,3]
+    }
+    print(tx_ref)
+  }
+
+alt_capital(mensualite)    
+
+
+
+
+# Test du tableau qui pour un capital donné, donne les mensualités possibles sur différents périodes, avec le taux d'endettement en face ====
+
+
+capital <- 200000
+tx <- 0.01
+duree <- 20
+
+data_emp <- simul_emprunt_v2(capital,tx,duree)
+
+# Formule mensualité
+mensualite <- (capital * tx/12) / (1 - (1 + tx/12)**-(12*duree))
+
+# Transformation en fonction pour boucler sur différentes périodes
+
+  # Taux de référence par période
+  tx_ref_mensu <- tibble(
+    duree = c(10,15,20,25,30),
+    taux = c(0.009, 0.010, 0.010, 0.015, 0.020),
+    mensualite <- as.numeric(5),
+    interet = as.numeric(5),
+    tx_endettement = as.numeric(5)
+  )
+
+  alt_mensualite <- function(capital){
+    
+    for (i in seq(1,5,1)){
+      
+      # Calcul de la mensualité pour chaque période
+      tx_ref_mensu[i,c("mensualite")] <- (capital * tx_ref_mensu[i,c("taux")]/12) / (1 - (1 + tx_ref_mensu[i,c("taux")]/12)**-(12*tx_ref_mensu[i,c("duree")]))
+      # Coût intérêt
+      tx_ref_mensu[i,c("interet")] <-12*tx_ref_mensu[i,c("duree")] * mensualite - tx_ref_mensu[i,3]
+      
+    }
+    print(tx_ref_mensu)
+  }
+
+
+  alt_mensualite(200000)
+  
+  
+  
+# Test de la fonction qui donne pour une mensualité donnée, un capital donné, un taux d'intérêt donné la durée nécessaire
+  
+  # Fonction pour calcul de durée nécessaire pour un capital donné étant donné la mensualité
+  
+  capital <- 200000
+  tx <- 0.01
+  mensualite <- 966
+  
+  # Formule mensualité qu'il faut transformer pour trouver la durée
+  mensualite <- (capital * tx/12) / (1 - (1 + tx/12)**-(12*duree)) 
+    # Résultat
+    log(-mensualite / (tx/12*capital - mensualite))/log(1 + tx/12)
+    
+    alt_duree <- function(capital, tx, mensualite){
+      
+      return(round((log(-mensualite / (tx/12*capital - mensualite))/log(1 + tx/12) / (12)),1))
+      
+    }
+  
+    alt_duree(200000,0.01,920)
+
+      # Deploiement shiny en ligne ====
+    install.packages('rsconnect')
+    
+    rsconnect::setAccountInfo(name='jordan-cantet',
+                              token='71EF130FB41AA85438631BEBB72BC858',
+                              secret='NU0TO4d61usucZAgcNQKMXrjwb8n4kvypysrYeiQ')   
+    library(rsconnect)    
+
+    rsconnect::deployApp('02_Outputs/simulateur_credit_immo_io')    
+    

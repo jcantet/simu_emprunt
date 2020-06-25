@@ -5,22 +5,36 @@ Fonctionnalité :
 - Comparaison de simulation (4 cas, 1 par ligne, tout voir sur la même page)
 
 Paramètres :
-- Revenu disponible par mois (description pour préciser comment l'obtenir)
-- Apport
-- Taux
-- Durée de remboursement (en année)
-- Capital emprunté
+- Revenu disponible par mois (description pour préciser comment l'obtenir) : OK
+- Apport : OK
+- Taux : OK
+- Durée de remboursement (en année) : OK
+- Capital emprunté : OK
 - Option Assurance Emprunteur. Si oui, taux à renseigner
 
 Indicateur (box):
-- Taux d'endettement --> box orange si au-delà de la capacité d'endettement, rouge si impossible
-- Montant de la mensualité avec entre parenthèse le montant de la mensualité max compte tenu du revenu
+- Taux d'endettement --> box orange si au-delà de la capacité d'endettement, rouge si impossible : OK
+- Montant de la mensualité : OK
+- Tableau avec les autres options possibles pour un même montant de mensualité (donc on fait varier la durée (15-20-25-30) et on regarde le capital qu'on peut emprunter) : OK
 
 Graphique :
 - Ventilation cout total emprunt : capital remboursé / intérêt payé / assurance payée --> avec étiquette des pourcentages et des montants (option avec ou sans le capital inclu si possible)
-- avec et sans approt pour voir la différence de cout. Eventuellement simulation de placement de l'appport pour voir sa rentabilité par rapport au coût
+- avec et sans approt pour voir la différence de cout. OK
+- Eventuellement simulation de placement de l'appport pour voir sa rentabilité par rapport au coût : OK
 
 Onglets :
-- Simulation de mensualité à partir de paramètres
+- Simulation de mensualité à partir de paramètres : OK
 - Tableau d'amortissement avec option d'exportation possible (mensuel/annuel)
 
+
+Trouver un thèmse visuel :
+- Personnaliser en utilisant le CSS
+- Uniformiser les couleurs
+- Mieux gérer les problèmes de taille
+- Trouver un autre moyen que les ValueBox pour afficher des valeurs
+
+Option à ajouter :
+- Export du tableau d'amortissement en fichier CSV : OK
+
+Se renseigner sur l'intérêt de l'apport : à quel moment est-il intéressant de l'utiliser plutôt que de le placer ? Quel(s) indicateur(s) regarder ?
+Mise en forme des tableau : pourcent, séparateur de millier, symbole €. Moyen rapide de le faire ? Une fonction unique genre prettynum ? Peut être me créer ma propre fonction ?
