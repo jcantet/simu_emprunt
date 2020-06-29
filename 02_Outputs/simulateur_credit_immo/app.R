@@ -15,8 +15,8 @@ options(scipen = 9999999)
 ui <- dashboardPage(
     dashboardHeader(title = "Simulateur crédit immobilier"),
     ## A) Sidebar content ====
-    dashboardSidebar(
-        sidebarMenu(
+    dashboardSidebar(width = 220,
+        sidebarMenu(tags$script(HTML("$('body').addClass('fixed');")), # Barre latérale fixée
             # 1) Liste Onglets ====
             menuItem("Synthèse", tabName = "Synthèse", icon = icon("dashboard")),
             menuItem("Tab. amortissement", icon = icon("th"), tabName = "tab_amortissement",
@@ -84,7 +84,9 @@ ui <- dashboardPage(
                                    valueBoxOutput(outputId = "tx_endettement_im", width = 6),
                                    valueBoxOutput(outputId = "mensualite_im",width = 6),
                                    valueBoxOutput(outputId = "interet_im",width = 6),
-                                   valueBoxOutput(outputId = "poids_interet_im",width = 6)))
+                                   valueBoxOutput(outputId = "poids_interet_im",width = 6)),
+                            column(width = 4,
+                                   valueBoxOutput(outputId = "duree_im",width = 8)))
                     ),
                     
                     # Résultats de la simulation avec les paramètres renseignés - sans prendre en compte l'apport
@@ -182,11 +184,20 @@ server <- function(input, output) {
             # Calcul de la mensualité pour chaque période
             tx_ref_mensu[i,c("mensualite")] <- (capital * tx_ref_mensu[i,c("taux")]/12) / (1 - (1 + tx_ref_mensu[i,c("taux")]/12)**-(12*tx_ref_mensu[i,c("duree")]))
             # Coût intérêt
-            tx_ref_mensu[i,c("interet")] <-12*tx_ref_mensu[i,c("duree")] * tx_ref_mensu[i,c("mensualite")] - tx_ref_mensu[i,3]
+            tx_ref_mensu[i,c("interet")] <- 12*tx_ref_mensu[i,c("duree")] * tx_ref_mensu[i,c("mensualite")] - capital
             # Taux d'endettement
             tx_ref_mensu[i,c("tx_endettement")] <- tx_ref_mensu[i,c("mensualite")] / revenu
             
         }
+        
+        tx_ref_mensu <- tx_ref_mensu %>% mutate(duree = paste(duree, "ans"),
+                                                taux = paste(round(taux*100,1)," %"),
+                                                mensualite = paste(format(round(mensualite,0),big.mark = " "),"€"),
+                                                interet = paste(format(round(interet,0),big.mark = " "),"€"),
+                                                tx_endettement = paste(round(tx_endettement*100,1)," %"))
+        
+        names(tx_ref_mensu) <- c("Durée","Taux","Mensualité","Intérêt", "Taux d'endettement")
+            
         return(tx_ref_mensu)
     }
     
@@ -207,17 +218,26 @@ server <- function(input, output) {
             # Coût intérêt
             tx_ref_cap[i,c("interet")] <-12*tx_ref_cap[i,c("duree")] * mensualite - tx_ref_cap[i,3]
         }
+        
+        tx_ref_cap <- tx_ref_cap %>% mutate(duree = paste(duree, "ans"),
+                                            taux = paste(round(taux*100,1)," %"),
+                                            capital = paste(format(round(capital,0),big.mark = " "),"€"),
+                                            interet = paste(format(round(interet,0),big.mark = " "),"€"))
+
+        names(tx_ref_cap) <- c("Durée","Taux","Capital emprunté","Intérêt")
+        
+        
         return(tx_ref_cap)
     }
     
     # Fonction pour calcul de durée nécessaire pour un capital donné étant donné la mensualité
     alt_duree <- function(capital, tx, mensualite){
-        
-        return(round((log(-mensualite / (tx/12*capital - mensualite))/log(1 + tx/12) / (12))),0)
-        
+        tx <- tx / 100
+        val <- as.numeric(round((log(-mensualite / (tx/12*capital - mensualite))/log(1 + tx/12) / (12)),1))
+        return(val)
     }
     
-    # Avec utilisation de l'apport à iso durée ====
+    # Iso durée apport ====
     graphique = reactiveVal()
     tableau = reactiveVal()
     mensualite = reactiveVal()
@@ -282,7 +302,7 @@ server <- function(input, output) {
     
     output$poids_interet = renderInfoBox({
         valueBox(
-            "Total intérêt / capital emprunté",value = scales::percent(as.numeric(interet())/(input$capital_emprunte - input$apport)),
+            "Total intérêt / capital emprunté",value = scales::percent(as.numeric(interet())/(input$capital_emprunte - input$apport),accuracy = 0.1),
             color = "teal"
         )
     })
@@ -310,27 +330,38 @@ server <- function(input, output) {
     
     
     
-    # Avec utilisation de l'apport à iso mensualité ====
+    # Iso mensu apport ====
     graphique_im = reactiveVal()
     tableau_im = reactiveVal()
     mensualite_im = reactiveVal()
     interet_im = reactiveVal()
     cout_emprunt_im = reactiveVal()
+    duree_im = reactiveVal()
     
+
     # Variables calculées à partir des paramètres
     observeEvent(input$capital_emprunte | input$taux | input$duree | input$apport, {
-        res_duree_im <- alt_duree(input$capital,input$taux,mensualite())
-        duree_im(res_duree_im)
+        
+        
+        data_sa = simul_emprunt(input$capital_emprunte, input$taux, input$duree)
+        tableau_sa(data_sa)
+        mt_mensu_sa = data_sa[1,c("mensualite")]
+        mensualite_sa(mt_mensu_sa)
+        
+        
+        
+        duree <- alt_duree(input$capital_emprunte - input$apport, input$taux, mensualite_sa())
+        duree_im(duree)
         
         data_im = simul_emprunt(input$capital_emprunte - input$apport, input$taux, duree_im())
         tableau_im(data_im)
-        graphique_im(ggplot(data_im, aes(x = id, y = capital_restant)) + geom_point())
+        graphique(ggplot(data_im, aes(x = id, y = capital_restant)) + geom_point())
         
         
         mt_mensu_im = data_im[1,c("mensualite")]
         mensualite_im(mt_mensu_im)
         
-        interet_im(mt_mensu_im * duree_im() * 12 - (input$capital_emprunte  - input$apport))
+        interet_im(mt_mensu_im * duree_im() * 12 - (input$capital_emprunte - input$apport))
         
     }, ignoreNULL = F)
     
@@ -378,8 +409,15 @@ server <- function(input, output) {
     
     output$poids_interet_im = renderInfoBox({
         valueBox(
-            "Total intérêt / capital emprunté",value = scales::percent(as.numeric(interet_im())/(input$capital_emprunte - input$apport)),
+            "Total intérêt / capital emprunté",value = scales::percent(as.numeric(interet_im())/(input$capital_emprunte - input$apport),accuracy = 0.1),
             color = "teal"
+        )
+    })
+    
+    output$duree_im = renderInfoBox({
+        valueBox(
+            "Durée de l'emprunt",value = paste(as.numeric(duree_im()) %/% 1,"ans et ", round((as.numeric(duree_im()) %% 1)*12,0), " mois"),
+            color = "purple"
         )
     })
     
@@ -405,7 +443,7 @@ server <- function(input, output) {
     })    
     
     
-    # Sans utilisation de l'apport ====
+    # Sans apport ====
     graphique_sa = reactiveVal()
     tableau_sa = reactiveVal()
     mensualite_sa = reactiveVal()
@@ -478,7 +516,7 @@ server <- function(input, output) {
     
     output$poids_interet_sa = renderInfoBox({
         valueBox(
-            "Total intérêt / capital emprunté",value = scales::percent(as.numeric(interet_sa())/(input$capital_emprunte)),
+            "Total intérêt / capital emprunté",value = scales::percent(as.numeric(interet_sa())/(input$capital_emprunte),accuracy = 0.1),
             color = "teal"
         )
     })
@@ -587,7 +625,7 @@ server <- function(input, output) {
     })
     
     
-    # Téléchargement tableau d'amortissement
+    # Téléchargement tableau d'amortissement ====
     output$downloadData <- downloadHandler(
         filename = function() {
             paste("tableau_amortissement", ".csv", sep = "")

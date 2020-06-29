@@ -2,7 +2,9 @@ Simulateur d'emprunt immobilier :
 
 Fonctionnalité : 
 - Libre choix des paramètres, avec valeur par défaut réaliste, et renvoi vers source d'infos
-- Comparaison de simulation (4 cas, 1 par ligne, tout voir sur la même page)
+- Comparaison de simulation (avec apport, sans apport, sans apport 2)
+	> sans apport 2 : Mensualité  fixée pour être égal à celle du scénario 1, le capital emprunté reste le même, mais on ajuste la durée
+	L'idée est de voir combien d'anénes on peut gagner sur le remboursement du prêt et sur le montant des intérêts.
 
 Paramètres :
 - Revenu disponible par mois (description pour préciser comment l'obtenir) : OK
@@ -18,7 +20,7 @@ Indicateur (box):
 - Tableau avec les autres options possibles pour un même montant de mensualité (donc on fait varier la durée (15-20-25-30) et on regarde le capital qu'on peut emprunter) : OK
 
 Graphique :
-- Ventilation cout total emprunt : capital remboursé / intérêt payé / assurance payée --> avec étiquette des pourcentages et des montants (option avec ou sans le capital inclu si possible)
+- Ventilation cout total emprunt : capital remboursé / intérêt payé / assurance payée --> avec étiquette des pourcentages et des montants (option avec ou sans le capital inclu si possible) : OK
 - avec et sans approt pour voir la différence de cout. OK
 - Eventuellement simulation de placement de l'appport pour voir sa rentabilité par rapport au coût : OK
 

@@ -332,6 +332,15 @@ mensualite <- (capital * tx/12) / (1 - (1 + tx/12)**-(12*duree))
     }
   
     alt_duree(200000,0.01,920)
+    
+    alt_duree <- function(capital, tx, mensualite){
+      tx <- tx / 100
+      
+      val <- as.integer(round(log( - mensualite / (tx / 12 * capital - mensualite)) / log(1 + tx/12) / (12),0))
+      return(val)
+    }
+    
+    typeof(alt_duree(200000,01,920))
 
       # Deploiement shiny en ligne ====
     install.packages('rsconnect')
