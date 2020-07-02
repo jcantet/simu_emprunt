@@ -42,64 +42,62 @@ ui <- dashboardPage(
                     
                     # Elements marquants
                     fluidRow(
-                        box(title = "En bref", width = 12, solidHeader = TRUE, status = "primary", height = 300,
-                            column(width = 2,
-                                   valueBoxOutput(outputId = "diff_tot_int", width = 12),
-                                   valueBoxOutput(outputId = "diff_mensu", width = 12)),
-                            column(width = 2,
-                                   valueBoxOutput(outputId = "mensu_max", width = 12),
-                                   valueBoxOutput(outputId = "rev_restant_mensu_max", width = 12)),
-                            column(width = 2,
-                                   valueBoxOutput(outputId = "rev_restant_mensu_2", width = 12),
-                                   valueBoxOutput(outputId = "rev_restant_mensu_1", width = 12)),
-                            column(width = 2,
-                                   valueBoxOutput(outputId = "rev_apport",width = 12)))
-                        ),
+                        box(title = "En bref", width = 3, solidHeader = TRUE, status = "primary", height = 300,
+                            valueBoxOutput(outputId = "mensu_max", width = 12),
+                            valueBoxOutput(outputId = "rev_restant_mensu_max", width = 12)),
+                                   # valueBoxOutput(outputId = "diff_tot_int", width = 12),
+                                   # valueBoxOutput(outputId = "diff_mensu", width = 12)),
+                        tabBox(title = "Propositions alternatives", side = "right", selected = "Iso capital", width = 6, height = 300,
+                               tabPanel("Iso capital" ,
+                                        textOutput("texte_alt_mensu"),
+                                        tableOutput(outputId = "tab_alt_mensu")),
+                               tabPanel("Iso mensualité", 
+                                        textOutput("texte_alt_capital"),
+                                        tableOutput(outputId = "tab_alt_capital"))),
+                        box(title = "Apport",width = 3, solidHeader = TRUE, status = "primary", height = 300,
+                            valueBoxOutput(outputId = "rev_apport", width = 12))),
                     
-                    # Alternatives
+                    
                     fluidRow(
-                        box(title = "Propositions alternatives", width = 12, solidHeader = TRUE, status = "primary", height = 250,
-                            column(width = 6,
-                                   tableOutput(outputId = "tab_alt_mensu")),
-                            column(width = 6,
-                                   tableOutput(outputId = "tab_alt_capital")))
-                    ),
-                    
-                    # Résultats de la simulation avec les paramètres renseignés - en prenant en compte l'apport à iso durée
-                    fluidRow(
-                        box(title = "Résultats - en utilisant l'apport à iso durée", width = 12, solidHeader = TRUE, status = "primary",height = 300,
-                            column(width = 4, plotOutput("cout_emprunt",height = 240)),
-                            column(width = 4,
-                                valueBoxOutput(outputId = "tx_endettement", width = 6),
-                                valueBoxOutput(outputId = "mensualite",width = 6),
-                                valueBoxOutput(outputId = "interet",width = 6),
-                                valueBoxOutput(outputId = "poids_interet",width = 6)))
-                            ),
-                    
-                    # Résultats de la simulation avec les paramètres renseignés - en prenant en compte l'apport à iso mensualité
-                    fluidRow(
-                        box(title = "Résultats - en utilisant l'apport à iso mensualité", width = 12, solidHeader = TRUE, status = "primary",height = 300,
-                            column(width = 4, plotOutput("cout_emprunt_im",height = 240)),
-                            column(width = 4,
-                                   valueBoxOutput(outputId = "tx_endettement_im", width = 6),
-                                   valueBoxOutput(outputId = "mensualite_im",width = 6),
-                                   valueBoxOutput(outputId = "interet_im",width = 6),
-                                   valueBoxOutput(outputId = "poids_interet_im",width = 6)),
-                            column(width = 4,
-                                   valueBoxOutput(outputId = "duree_im",width = 8)))
-                    ),
-                    
+                        tabBox(title = "Résultats - en utilisant l'apport", side = "right", selected = "Iso durée", width = 6,height = 550,
+                               # Résultats de la simulation avec les paramètres renseignés - en prenant en compte l'apport à iso durée
+                               tabPanel("Iso durée", 
+                                        fluidRow(
+                                            column(align ="center",width = 12,
+                                                plotOutput("cout_emprunt",height = 240))),
+                                        fluidRow(
+                                            valueBoxOutput(outputId = "tx_endettement", width = 6),
+                                            valueBoxOutput(outputId = "mensualite",width = 6),
+                                            valueBoxOutput(outputId = "interet",width = 6),
+                                            valueBoxOutput(outputId = "poids_interet",width = 6),
+                                            valueBoxOutput(outputId = "diff_mensu",width = 6),
+                                            valueBoxOutput(outputId = "rev_restant_mensu",width = 6))),
+                               # Résultats de la simulation avec les paramètres renseignés - en prenant en compte l'apport à iso mensualité
+                               tabPanel("Iso mensualité",
+                                        fluidRow(
+                                            column(align ="center",width = 12,
+                                                plotOutput("cout_emprunt_im",height = 240))),
+                                        fluidRow(
+                                            valueBoxOutput(outputId = "tx_endettement_im", width = 6),
+                                            valueBoxOutput(outputId = "mensualite_im",width = 6),
+                                            valueBoxOutput(outputId = "interet_im",width = 6),
+                                            valueBoxOutput(outputId = "poids_interet_im",width = 6),
+                                            valueBoxOutput(outputId = "duree_im",width = 6),
+                                            valueBoxOutput(outputId = "rev_restant_mensu_im",width = 6)))  
+                                ),
+
                     # Résultats de la simulation avec les paramètres renseignés - sans prendre en compte l'apport
-                    fluidRow(
-                        box(title = "Résultats - sans utiliser l'apport", width = 12, solidHeader = TRUE, status = "primary",height = 300,
-                            column(width = 4, plotOutput("cout_emprunt_sa",height = 240)),
-                            column(width = 4,
-                                   valueBoxOutput(outputId = "tx_endettement_sa", width = 6),
-                                   valueBoxOutput(outputId = "mensualite_sa",width = 6),
-                                   valueBoxOutput(outputId = "interet_sa",width = 6),
-                                   valueBoxOutput(outputId = "poids_interet_sa",width = 6)))
-                        )
-                    ),
+                            box(title = "Résultats - sans utiliser l'apport", width = 6, solidHeader = TRUE, status = "primary",height = 550,
+                                fluidRow(width = 4, 
+                                         column(align ="center",width = 12,
+                                                plotOutput("cout_emprunt_sa",height = 240))),
+                                fluidRow(width = 4,
+                                       valueBoxOutput(outputId = "tx_endettement_sa", width = 6),
+                                       valueBoxOutput(outputId = "mensualite_sa",width = 6),
+                                       valueBoxOutput(outputId = "interet_sa",width = 6),
+                                       valueBoxOutput(outputId = "poids_interet_sa",width = 6),
+                                       valueBoxOutput(outputId = "rev_restant_mensu_1", width = 12)))
+                    )),
         
             # Onglet 2 : Tableau d'amortissement ====
             tabItem(tabName = "tab_amortissement",
@@ -130,6 +128,27 @@ ui <- dashboardPage(
 server <- function(input, output) {
     
     # Fonctions génériques ====
+    
+    # Fonction pour mettre en forme les résultats
+    easy_format <- function(variable, type_out, decimal = 0, suffix = NULL){
+        
+        # Format pourcent
+        if (type_out == "pourcent"){
+            variable = paste0(format(x = round(variable*100, decimal)),"%")
+            
+            # Format milliers
+        } else if (type_out == "milliers"){
+            variable = paste0(format(x = round(variable, decimal), big.mark = " "), suffix)
+        }
+        
+        # Gestion des erreurs : si l'utilisateur rentre un paramètre qui n'est pas prévu
+        if ((type_out %in% c("pourcent","milliers")) == FALSE){
+            print(paste0("type_out ", type_out," n'existe pas"))
+        } else {
+            return(variable)
+        }
+        
+    }
     
     # Fonction emprunt + calcul amortissement
     simul_emprunt <- function(capital_emprunte, taux, duree){
@@ -190,11 +209,12 @@ server <- function(input, output) {
             
         }
         
-        tx_ref_mensu <- tx_ref_mensu %>% mutate(duree = paste(duree, "ans"),
-                                                taux = paste(round(taux*100,1)," %"),
-                                                mensualite = paste(format(round(mensualite,0),big.mark = " "),"€"),
-                                                interet = paste(format(round(interet,0),big.mark = " "),"€"),
-                                                tx_endettement = paste(round(tx_endettement*100,1)," %"))
+        tx_ref_mensu <- tx_ref_mensu %>% mutate(duree = easy_format(duree, type_out = "milliers" ,suffix = " ans"),
+                                                taux = easy_format(taux, type_out = "pourcent",decimal = 1),
+                                                mensualite = easy_format(mensualite, type_out = "milliers",suffix = " €"),
+                                                interet = easy_format(interet,type_out = "milliers",decimal = 0,suffix = " €"),
+                                                tx_endettement = easy_format(tx_endettement, type_out = "pourcent", decimal = 1))
+        
         
         names(tx_ref_mensu) <- c("Durée","Taux","Mensualité","Intérêt", "Taux d'endettement")
             
@@ -219,10 +239,10 @@ server <- function(input, output) {
             tx_ref_cap[i,c("interet")] <-12*tx_ref_cap[i,c("duree")] * mensualite - tx_ref_cap[i,3]
         }
         
-        tx_ref_cap <- tx_ref_cap %>% mutate(duree = paste(duree, "ans"),
-                                            taux = paste(round(taux*100,1)," %"),
-                                            capital = paste(format(round(capital,0),big.mark = " "),"€"),
-                                            interet = paste(format(round(interet,0),big.mark = " "),"€"))
+        tx_ref_cap <- tx_ref_cap %>% mutate(duree = easy_format(duree, type_out = "milliers", suffix = " ans"),
+                                            taux = easy_format(taux, type_out = "pourcent", decimal = 1),
+                                            capital = easy_format(capital, type_out = "milliers", suffix = "€"),
+                                            interet = easy_format(interet, type_out = "milliers", suffix = "€"))
 
         names(tx_ref_cap) <- c("Durée","Taux","Capital emprunté","Intérêt")
         
@@ -236,6 +256,8 @@ server <- function(input, output) {
         val <- as.numeric(round((log(-mensualite / (tx/12*capital - mensualite))/log(1 + tx/12) / (12)),1))
         return(val)
     }
+    
+
     
     # Iso durée apport ====
     graphique = reactiveVal()
@@ -560,7 +582,7 @@ server <- function(input, output) {
     output$diff_mensu <- renderInfoBox({
         valueBox(
             subtitle = "Différence de mensualité à iso durée",
-            value = paste(format(round(as.numeric(mensualite_sa() - mensualite()),0),big.mark = " "),"€"),
+            value = paste(format(round(as.numeric(mensualite() - mensualite_sa()),0),big.mark = " "),"€"),
             color = "teal"
         )
         
@@ -585,8 +607,18 @@ server <- function(input, output) {
         )
     })
     
-    # Revenu restant après déduction de la mensualité avec l'option 2
-    output$rev_restant_mensu_2 <- renderInfoBox({
+    
+    # Revenu restant après mensualité IM
+    output$rev_restant_mensu_im <- renderInfoBox({
+        valueBox(
+            subtitle = "Revenu dispo après mensualité",
+            value = paste(format(round(as.numeric(input$revenu - mensualite_im()),0),big.mark = " "),"€"),
+            color = "navy"
+        )
+    })
+    
+    # Revenu restant après mensualité iso-durée
+    output$rev_restant_mensu <- renderInfoBox({
         valueBox(
             subtitle = "Revenu dispo - avec apport",
             value = paste(format(round(as.numeric(input$revenu - mensualite()),0),big.mark = " "),"€"),
@@ -616,14 +648,27 @@ server <- function(input, output) {
     
     
     # Solutions alternatives ====
-    output$tab_alt_mensu <- renderTable({
+    output$tab_alt_mensu <- renderTable(align = "ccrrc",{
         tab_alt_mensu()
     })
     
-    output$tab_alt_capital <- renderTable({
+    
+    output$texte_alt_mensu <- renderText({
+        paste("Simulation pour un capital emprunté de ",
+              easy_format(input$capital_emprunte,type_out = "milliers", decimal = 0, suffix = " €"),
+              ":")
+    })
+    
+    output$tab_alt_capital <- renderTable(align = "ccrr",{
         tab_alt_capital()
     })
     
+    
+    output$texte_alt_capital <- renderText({
+        paste("Emprunt possible avec une mensualité de ",
+              easy_format(as.numeric(mensualite_sa()),type_out = "milliers", decimal = 0, suffix = " €"),
+              ":")
+    })
     
     # Téléchargement tableau d'amortissement ====
     output$downloadData <- downloadHandler(

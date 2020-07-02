@@ -342,13 +342,53 @@ mensualite <- (capital * tx/12) / (1 - (1 + tx/12)**-(12*duree))
     
     typeof(alt_duree(200000,01,920))
 
-      # Deploiement shiny en ligne ====
-    install.packages('rsconnect')
     
-    rsconnect::setAccountInfo(name='jordan-cantet',
-                              token='71EF130FB41AA85438631BEBB72BC858',
-                              secret='NU0TO4d61usucZAgcNQKMXrjwb8n4kvypysrYeiQ')   
-    library(rsconnect)    
+# Création fonction pour mise en forme tableau
+tableau_test <- tibble(
+  duree = c(10,15,20,25,30),
+  taux = c(0.009, 0.010, 0.010, 0.015, 0.020),
+  mensualite = c(500,600,700,1000,1200),
+  interet = as.numeric(c(12000.525,15623,12466,12452.55556,36455)),
+  tx_endettement = c(0.3350,0.45555,0.46987,0.54,0.6)
+)
+tableau_test
 
-    rsconnect::deployApp('02_Outputs/simulateur_credit_immo_io')    
+
+easy_format <- function(variable, type_out, decimal = 0, suffix = NULL){
+  
+  # Format pourcent
+  if (type_out == "pourcent"){
+    variable = paste0(format(x = round(variable*100, decimal)),"%")
+  
+  # Format milliers
+  } else if (type_out == "milliers"){
+    variable = paste0(format(x = round(variable, decimal), big.mark = " ", justify = "right"), suffix)
+  }
+
+  # Gestion des erreurs : si l'utilisateur rentre un paramètre qui n'est pas prévu
+  if ((type_out %in% c("pourcent","milliers")) == FALSE){
+  print(paste0("type_out ", type_out," n'existe pas"))
+  } else {
+    return(variable)
+  }
+  
+}
+
+
+easy_format(tableau_test$tx_endettement, type_out = "pourcent", decimal = 1)
+easy_format(tableau_test$interet, type_out = "milliers", decimal = 3, suffix = " €")
+
+
+easy_format(tableau_test$taux, type_out = "porcent",decimal = 1)
+
+
+# Deploiement shiny en ligne ====
+install.packages('rsconnect')
+
+rsconnect::setAccountInfo(name='jordan-cantet',
+                        token='71EF130FB41AA85438631BEBB72BC858',
+                        secret='NU0TO4d61usucZAgcNQKMXrjwb8n4kvypysrYeiQ')   
+library(rsconnect)    
+
+rsconnect::deployApp('02_Outputs/simulateur_credit_immo_io')    
     

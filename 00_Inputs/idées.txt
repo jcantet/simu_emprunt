@@ -2,8 +2,8 @@ Simulateur d'emprunt immobilier :
 
 Fonctionnalité : 
 - Libre choix des paramètres, avec valeur par défaut réaliste, et renvoi vers source d'infos
-- Comparaison de simulation (avec apport, sans apport, sans apport 2)
-	> sans apport 2 : Mensualité  fixée pour être égal à celle du scénario 1, le capital emprunté reste le même, mais on ajuste la durée
+- Comparaison de simulation (avec apport, sans apport, sans apport 2) : OK
+	> avec apport 2 : Mensualité  fixée pour être égal à celle du scénario 1, le capital emprunté reste le même, mais on ajuste la durée : OK
 	L'idée est de voir combien d'anénes on peut gagner sur le remboursement du prêt et sur le montant des intérêts.
 
 Paramètres :
