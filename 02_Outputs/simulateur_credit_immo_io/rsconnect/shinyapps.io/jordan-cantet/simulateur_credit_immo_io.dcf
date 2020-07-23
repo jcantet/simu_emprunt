@@ -5,6 +5,6 @@ account: jordan-cantet
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2449431
-bundleId: 3264938
+bundleId: 3426103
 url: https://jordan-cantet.shinyapps.io/simulateur_credit_immo_io/
-when: 1592042258.56417
+when: 1595512696.92361
