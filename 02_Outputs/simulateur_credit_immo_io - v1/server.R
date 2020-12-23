@@ -40,13 +40,16 @@ server <- function(input, output, session) {
     }
     
     # Fonction emprunt + calcul amortissement
-    simul_emprunt <- function(capital_emprunte, taux, duree){
+    simul_emprunt <- function(capital_emprunte, taux, duree, tx_assurance = input$assurance){
         
         # Nombre de mensualité
         nb_mensu <- duree * 12
         
-        # Correction du taux pour le ramener en pourcent
-        taux <- taux/100
+        # Correction du taux d'emprunt pour le ramener en pourcent
+        taux <- taux / 100
+    
+        # Correction du taux d'assurance pour le ramener en pourcent
+        tx_assurance <- tx_assurance / 100
         
         # Taux périodique
         tx_period <- (1+taux/12)
@@ -62,6 +65,7 @@ server <- function(input, output, session) {
         mensualite = rep(mt_mensu,nb_mensu)
         capital = numeric(nb_mensu)
         interet = numeric(nb_mensu)
+        assurance = numeric(nb_mensu)
         capital_restant = numeric(nb_mensu)
         
         
@@ -72,10 +76,11 @@ server <- function(input, output, session) {
             capital_initial[i] <- ifelse(i == 1,capital_emprunte, capital_restant[i-1])
             capital[i] <- mensualite[i] - (tx_period-1) * capital_initial[i]
             interet[i] <- (tx_period-1) * capital_initial[i]
+            assurance[i] <- as.numeric(tx_assurance * capital_emprunte / 12)
             capital_restant[i] <- capital_initial[i] - capital[i]
         }
         
-        df <- as_tibble(cbind(annee,mois,capital_initial,mensualite,capital,interet,capital_restant))
+        df <- as_tibble(cbind(annee,mois,capital_initial,mensualite,capital,interet,assurance,capital_restant))
         return(round(df,3))
     }
     
@@ -88,11 +93,12 @@ server <- function(input, output, session) {
                    mensualite = easy_format(mensualite, type_out = "milliers", suffix = " €"),
                    capital = easy_format(capital, type_out = "milliers", suffix = " €"),
                    interet = easy_format(interet, type_out = "milliers",decimal = 0,suffix = " €"),
+                   assurance = easy_format(assurance, type_out = "milliers",decimal = 0,suffix = " €"),
                    capital_restant = easy_format(capital_restant, type_out = "milliers", suffix = " €")) %>% 
-            select(annee, mois, capital_initial, mensualite, capital, interet, capital_restant)
+            select(annee, mois, capital_initial, mensualite, capital, interet, assurance, capital_restant)
 
 
-        names(tableau_mef) <- c("Année","Mois","Capital initial","Mensualité","Part Capital", "Part Intérêt", "Capital restant")
+        names(tableau_mef) <- c("Année","Mois","Capital initial","Mensualité","Part capital", "Part intérêt", "Part assurance", "Capital restant")
         return(tableau_mef)
     }
     
@@ -168,18 +174,25 @@ server <- function(input, output, session) {
     }
     
     # Fonction pour représenter le coût de l'emprunt
-    graphique_cout_total <- function(data, Montant = Valeur,Valeur = Valeur, capital_emprunte = input$capital_emprunte){
-        ggplot(data = data,aes(x = Montant, y = Valeur))+
-            geom_col(aes(fill = Montant),show.legend = FALSE)+
-            geom_text(aes(label = paste(format(round(Valeur,0),big.mark = " "),"€")), vjust = -0.5, size = 4.5)+
-            scale_y_continuous(limits = c(0,capital_emprunte),expand=c(0,0,0.08,0))+
-            labs(x = NULL, y = NULL)+
-            theme(axis.text.y = element_blank(),
-                  axis.text.x = element_text(face = "bold", size = 13),
-                  axis.ticks = element_blank(),
-                  panel.grid.major.y = element_line(colour = "grey95"),
-                  panel.grid.major.x = element_blank(),
-                  panel.background = element_rect(fill = "#FEFBF8"))
+    graphique_cout_total <- function(data, Montant = Montant, Valeur = Valeur, capital_emprunte = input$capital_emprunte){
+        
+        
+        data$fraction <- data$Valeur / sum(data$Valeur) # Pourcentage
+        data$ymax <- cumsum(data$fraction) # Pourcentage cumulé (Haut de chaque rectangle)
+        data$ymin <- c(0, head(data$ymax, n = -1)) # Position basse de chaque rectangle
+        data$labelPosition <- (data$ymax + data$ymin) / 2 # Position des étiquettes
+        data$label <- paste0(data$Montant, "\n", 
+                             easy_format(data$Valeur,type_out = "milliers", decimal = 0, suffix = "€")) # Mise en forme label
+        
+        ggplot(data, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=Montant)) +
+            geom_rect() +
+            geom_label( x=4, aes(y=labelPosition, label=label), size = 4.5, label.size = 0) +
+            scale_fill_brewer(palette=4) +
+            coord_polar(theta="y") +
+            xlim(c(2, 4)) +
+            theme_void()+
+            theme(legend.position = "none")
+
     }
 
     # Obj : Simuler un emprunt avec utilisation de l'apport et durée de remboursement identique au scénario sans apport (variation mensualité)
@@ -187,12 +200,14 @@ server <- function(input, output, session) {
     tableau = reactiveVal()
     mensualite = reactiveVal()
     interet = reactiveVal()
+    assurance = reactiveVal()
     cout_emprunt = reactiveVal()
     
     graphique_im = reactiveVal()
     tableau_im = reactiveVal()
     mensualite_im = reactiveVal()
     interet_im = reactiveVal()
+    assurance_im = reactiveVal()
     cout_emprunt_im = reactiveVal()
     duree_im = reactiveVal()
     
@@ -200,6 +215,7 @@ server <- function(input, output, session) {
     tableau_sa = reactiveVal()
     mensualite_sa = reactiveVal()
     interet_sa = reactiveVal()
+    assurance_sa = reactiveVal()
     cout_emprunt_sa = reactiveVal()
     tab_alt_mensu = reactiveVal()
     tab_alt_capital = reactiveVal()
@@ -207,13 +223,12 @@ server <- function(input, output, session) {
     apport_ajuste = reactiveVal()
     
     # 1) Elements calculés à partir des paramètres, et mis à jour dès qu'un paramètre est modifié ====
-    observeEvent(input$capital_emprunte | input$taux | input$duree | input$apport, {
+    observeEvent(input$capital_emprunte | input$taux | input$duree | input$apport | input$assurance, {
  
-        
+        # Le code est stoppé tout pendant que la valeur renseignée pour le capital est nulle
         ifelse(is.na(input$capital_emprunte),
                req(input$capital_emprunte),
                input$capital_emprunte)
-        
         
         
         # Quand le capital emprunté est inférieur à l'apport disponible, l'apport n'est pas consommé entièrement
@@ -231,6 +246,8 @@ server <- function(input, output, session) {
             # Montant total des intérêt pour l'affichage dans infobox et attribution à un objet réactif
             interet(mt_mensu * input$duree * 12 - (input$capital_emprunte  - apport_ajuste()))
         
+            # Montant de l'assurance
+            assurance((input$capital_emprunte - apport_ajuste()) * input$assurance / 100 * input$duree)
         
         # B) Iso mensu apport ====
             # Besoin de simuler sans apport pour obtenir la mensualité cible
@@ -257,6 +274,9 @@ server <- function(input, output, session) {
             # Montant total des intérêt pour l'affichage dans infobox et attribution à un objet réactif
             interet_im(mt_mensu_im * duree_im() * 12 - (input$capital_emprunte - apport_ajuste()))
         
+            # Montant de l'assurance
+            assurance_im((input$capital_emprunte - apport_ajuste()) * input$assurance / 100 * duree_im())
+            
         # C) Sans apport ====
             # Résultats de la simulation et attribution à un objet réactif
             data_sa = simul_emprunt(input$capital_emprunte, input$taux, input$duree)
@@ -276,34 +296,37 @@ server <- function(input, output, session) {
             # Simulation pour une même mensualité des différents montants de capital empruntable possible (durées de remboursement différentes)
             data_alt_capital = alt_capital(mt_mensu_sa)
             tab_alt_capital(data_alt_capital)
+
+            # Montant de l'assurance
+            assurance_sa(input$capital_emprunte * input$assurance / 100 * input$duree)
             
             
     }, ignoreNULL = F)
     
     # 2) Graphique coût de l'emprunt ====
     output$cout_emprunt = renderPlot({
-        req(input$capital_emprunte)
+        req(input$capital_emprunte) # Affichage si le capital emprunté n'est pas nul
         data_cout_emprunt = tibble(
-            Montant = c("Apport","Capital emprunté","Intérêt"),
-            Valeur = as.numeric(c(apport_ajuste(), input$capital_emprunte - apport_ajuste(), interet())))
+            Montant = c("Apport","Capital emprunté","Intérêt", "Assurance"),
+            Valeur = as.numeric(c(apport_ajuste(), input$capital_emprunte - apport_ajuste(), interet(), assurance())))
         
         graphique_cout_total(data_cout_emprunt)
     })
     
     output$cout_emprunt_im = renderPlot({
-        req(input$capital_emprunte)
+        req(input$capital_emprunte) # Affichage si le capital emprunté n'est pas nul
         data_cout_emprunt_im = tibble(
-            Montant = c("Apport","Capital emprunté","Intérêt"),
-            Valeur = as.numeric(c(apport_ajuste(), input$capital_emprunte - apport_ajuste(), interet_im())))
+            Montant = c("Apport","Capital emprunté","Intérêt","Assurance"),
+            Valeur = as.numeric(c(apport_ajuste(), input$capital_emprunte - apport_ajuste(), interet_im(), assurance_im())))
         
         graphique_cout_total(data_cout_emprunt_im)
     })
     
     output$cout_emprunt_sa = renderPlot({
-        req(input$capital_emprunte)
+        req(input$capital_emprunte) # Affichage si le capital emprunté n'est pas nul
         data_cout_emprunt_sa = tibble(
-            Montant = c("Apport","Capital emprunté","Intérêt"),
-            Valeur = as.numeric(c(apport_ajuste() - apport_ajuste(), input$capital_emprunte, interet_sa())))
+            Montant = c("Capital emprunté","Intérêt","Assurance"),
+            Valeur = as.numeric(c(input$capital_emprunte, interet_sa(), assurance_sa())))
         
         graphique_cout_total(data_cout_emprunt_sa)
         
@@ -314,7 +337,7 @@ server <- function(input, output, session) {
                                                        dom = 'tp',
                                                        autoWidth = TRUE,
                                                        filter = "top",
-                                                       columnDefs = list(className = 'dt-center', width = '200px', targets = c(1, 7))),{
+                                                       columnDefs = list(className = 'dt-center', width = '200px', targets = c(1, 8))),{
         
         tab_amortissement_mef(tableau_sa())
     })
@@ -346,27 +369,27 @@ server <- function(input, output, session) {
     })
     
     # 5) Montant total intérêt & poids des intérêts par rapport au capital emprunté====
+    # Coût total (renommer les variables si choix retenu)
     output$interet = renderInfoBox({
         valueBox(
-            paste0("Total intérêt,",
-                   " soit ", scales::percent(as.numeric(interet())/(input$capital_emprunte - apport_ajuste()),accuracy = 0.1)," du capital"),
-            value = paste0(format(round(as.numeric(interet()),0),big.mark = " "),"€"),
+            paste0("Coût total pour emprunter un capital de ", easy_format(input$capital_emprunte - apport_ajuste(),type_out = "milliers", decimal = 0, suffix = "€")),
+            value = easy_format(interet() + assurance(),type_out = "milliers", decimal = 0, suffix = "€"),
             color = "teal")
     })
     
+    # Coût total (renommer les variables si choix retenu)
     output$interet_im = renderInfoBox({
         valueBox(
-            paste0("Total intérêt,",
-                   " soit ", scales::percent(as.numeric(interet_im())/(input$capital_emprunte - apport_ajuste()),accuracy = 0.1)," du capital"),
-            value = paste(format(round(as.numeric(interet_im()),0),big.mark = " "),"€"),
+            paste0("Coût total pour emprunter un capital de ", easy_format(input$capital_emprunte - apport_ajuste(),type_out = "milliers", decimal = 0, suffix = "€")),
+            value = easy_format(interet_im() + assurance_im(),type_out = "milliers", decimal = 0, suffix = "€"),
             color = "teal")
     })
     
+    # Coût total (renommer les variables si choix retenu)
     output$interet_sa = renderInfoBox({
         valueBox(
-            paste0("Total intérêt,",
-                   " soit ", scales::percent(as.numeric(interet_sa())/(input$capital_emprunte),accuracy = 0.1)," du capital"),
-            value = paste(format(round(as.numeric(interet_sa()),0),big.mark = " "),"€"),
+            paste0("Coût total pour emprunter un capital de ", easy_format(input$capital_emprunte,type_out = "milliers", decimal = 0, suffix = "€")),
+            value = easy_format(interet_sa() + assurance_sa(),type_out = "milliers", decimal = 0, suffix = "€"),
             color = "teal")
     })
     
