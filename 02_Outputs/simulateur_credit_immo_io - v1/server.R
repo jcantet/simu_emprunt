@@ -54,7 +54,7 @@ server <- function(input, output, session) {
         # Taux périodique
         tx_period <- (1+taux/12)
         
-        # Calcul de la mensualité
+        # Calcul de la mensualité hors assurance
         mt_mensu <- (capital_emprunte * (taux / 12) * (tx_period**nb_mensu)) / (tx_period ** nb_mensu-1)
         
         # Vecteurs vides
@@ -62,7 +62,8 @@ server <- function(input, output, session) {
         mois = rep(1:12, time = duree)
         annee = numeric(nb_mensu)
         capital_initial = numeric(nb_mensu)
-        mensualite = rep(mt_mensu,nb_mensu)
+        mensualite_ss_ass = rep(mt_mensu,nb_mensu)
+        mensualite_yc_ass = numeric(nb_mensu)
         capital = numeric(nb_mensu)
         interet = numeric(nb_mensu)
         assurance = numeric(nb_mensu)
@@ -74,13 +75,14 @@ server <- function(input, output, session) {
             annee[i] = ceiling(id_mensu[i]/12)
             mois[i] <- as.integer(mois[i])
             capital_initial[i] <- ifelse(i == 1,capital_emprunte, capital_restant[i-1])
-            capital[i] <- mensualite[i] - (tx_period-1) * capital_initial[i]
+            capital[i] <- mensualite_ss_ass[i] - (tx_period-1) * capital_initial[i]
             interet[i] <- (tx_period-1) * capital_initial[i]
             assurance[i] <- as.numeric(tx_assurance * capital_emprunte / 12)
+            mensualite_yc_ass[i] <- mensualite_ss_ass[i] + assurance[i]
             capital_restant[i] <- capital_initial[i] - capital[i]
         }
         
-        df <- as_tibble(cbind(annee,mois,capital_initial,mensualite,capital,interet,assurance,capital_restant))
+        df <- as_tibble(cbind(annee,mois,capital_initial,mensualite_ss_ass,mensualite_yc_ass,capital,interet,assurance,capital_restant))
         return(round(df,3))
     }
     
@@ -90,7 +92,7 @@ server <- function(input, output, session) {
             mutate(annee = as.integer(annee),
                    mois = as.integer(mois),
                    capital_initial = easy_format(capital_initial, type_out = "milliers", suffix = " €"),
-                   mensualite = easy_format(mensualite, type_out = "milliers", suffix = " €"),
+                   mensualite = easy_format(mensualite_yc_ass, type_out = "milliers", suffix = " €"),
                    capital = easy_format(capital, type_out = "milliers", suffix = " €"),
                    interet = easy_format(interet, type_out = "milliers",decimal = 0,suffix = " €"),
                    assurance = easy_format(assurance, type_out = "milliers",decimal = 0,suffix = " €"),
@@ -102,42 +104,46 @@ server <- function(input, output, session) {
         return(tableau_mef)
     }
     
-    # Fonction calcul des mensualités alternatives pour un capital donné
-    alt_mensualite <- function(capital, revenu){
+    # Iso-capital : fonction calcul des mensualités alternatives pour un capital donné
+    alt_mensualite <- function(capital, revenu, tx_assurance = input$assurance){
         
         # Tableaux de référence
         tx_ref_mensu <- tibble(
             duree = c(10,15,20,25,30),
             taux = taux_marche,
-            mensualite = as.numeric(5),
+            mensualite_ss_ass = as.numeric(5),
+            mensualite_yc_ass = as.numeric(5),
             interet = as.numeric(5),
             tx_endettement = as.numeric(5)
         )
         
         for (i in seq(1,5,1)){
             
-            # Calcul de la mensualité pour chaque période
-            tx_ref_mensu[i,c("mensualite")] <- (capital * tx_ref_mensu[i,c("taux")]/12) / (1 - (1 + tx_ref_mensu[i,c("taux")]/12)**-(12*tx_ref_mensu[i,c("duree")]))
+            # Calcul de la mensualité pour chaque période (hors assurance)
+            tx_ref_mensu[i,c("mensualite_ss_ass")] <- (capital * tx_ref_mensu[i,c("taux")]/12) / (1 - (1 + tx_ref_mensu[i,c("taux")]/12)**-(12*tx_ref_mensu[i,c("duree")]))
+            # Calcul de la mensualité pour chaque période (y compris assurance)
+            tx_ref_mensu[i,c("mensualite_yc_ass")] <- tx_ref_mensu[i,c("mensualite_ss_ass")] + as.numeric(tx_assurance/100 * capital / 12)
             # Coût intérêt
-            tx_ref_mensu[i,c("interet")] <- 12*tx_ref_mensu[i,c("duree")] * tx_ref_mensu[i,c("mensualite")] - capital
+            tx_ref_mensu[i,c("interet")] <- 12*tx_ref_mensu[i,c("duree")] * tx_ref_mensu[i,c("mensualite_ss_ass")] - capital
             # Taux d'endettement
-            tx_ref_mensu[i,c("tx_endettement")] <- tx_ref_mensu[i,c("mensualite")] / revenu
+            tx_ref_mensu[i,c("tx_endettement")] <- tx_ref_mensu[i,c("mensualite_yc_ass")] / revenu
             
         }
         
         tx_ref_mensu <- tx_ref_mensu %>% mutate(duree = easy_format(duree, type_out = "milliers" ,suffix = " ans"),
                                                 taux = easy_format(taux, type_out = "pourcent",decimal = 2),
-                                                mensualite = easy_format(mensualite, type_out = "milliers",suffix = " €"),
+                                                mensualite = easy_format(mensualite_yc_ass, type_out = "milliers",suffix = " €"),
                                                 interet = easy_format(interet,type_out = "milliers",decimal = 0,suffix = " €"),
-                                                tx_endettement = easy_format(tx_endettement, type_out = "pourcent", decimal = 1))
+                                                tx_endettement = easy_format(tx_endettement, type_out = "pourcent", decimal = 1)) %>% 
+            select(duree,taux,mensualite,interet,tx_endettement)
         
         
-        names(tx_ref_mensu) <- c("Durée","Taux","Mensualité","Intérêt", "Taux d'endettement")
+        names(tx_ref_mensu) <- c("Durée","Taux","Mensualité","Intérêt","Taux d'endettement")
         
         return(tx_ref_mensu)
     }
     
-    # Fonction pour calcul des capitaux alternatifs pour une mensualité donnée
+    # Iso-mensualité : fonction pour calcul des capitaux alternatifs pour une mensualité donnée
     alt_capital <- function(mensualite){
         
         # Tableaux de référence
@@ -152,8 +158,9 @@ server <- function(input, output, session) {
             # Capital possible
             tx_ref_cap[i,c("capital")] <- mensualite * (1 - (1 + tx_ref_cap[i,c("taux")]/12)**(-12*tx_ref_cap[i,c("duree")])) / tx_ref_cap[i,c("taux")]*12
             # Coût intérêt
-            tx_ref_cap[i,c("interet")] <-12*tx_ref_cap[i,c("duree")] * mensualite - tx_ref_cap[i,3]
+            tx_ref_cap[i,c("interet")] <- 12*tx_ref_cap[i,c("duree")] * mensualite - tx_ref_cap[i,3]
         }
+        
         
         tx_ref_cap <- tx_ref_cap %>% mutate(duree = easy_format(duree, type_out = "milliers", suffix = " ans"),
                                             taux = easy_format(taux, type_out = "pourcent", decimal = 2),
@@ -198,7 +205,8 @@ server <- function(input, output, session) {
     # Obj : Simuler un emprunt avec utilisation de l'apport et durée de remboursement identique au scénario sans apport (variation mensualité)
     graphique = reactiveVal()
     tableau = reactiveVal()
-    mensualite = reactiveVal()
+    mensualite_ss_ass = reactiveVal()
+    mensualite_yc_ass = reactiveVal()
     interet = reactiveVal()
     assurance = reactiveVal()
     cout_emprunt = reactiveVal()
@@ -206,6 +214,8 @@ server <- function(input, output, session) {
     graphique_im = reactiveVal()
     tableau_im = reactiveVal()
     mensualite_im = reactiveVal()
+    mensualite_ss_ass_im = reactiveVal()
+    mensualite_yc_ass_im = reactiveVal()
     interet_im = reactiveVal()
     assurance_im = reactiveVal()
     cout_emprunt_im = reactiveVal()
@@ -213,7 +223,8 @@ server <- function(input, output, session) {
     
     graphique_sa = reactiveVal()
     tableau_sa = reactiveVal()
-    mensualite_sa = reactiveVal()
+    mensualite_ss_ass_sa = reactiveVal()
+    mensualite_yc_ass_sa = reactiveVal()
     interet_sa = reactiveVal()
     assurance_sa = reactiveVal()
     cout_emprunt_sa = reactiveVal()
@@ -239,12 +250,16 @@ server <- function(input, output, session) {
             # Résultats de la simulation et attribution à un objet réactif
             data = simul_emprunt(input$capital_emprunte - apport_ajuste(), input$taux, input$duree)
             
-            # Montant de la mensualité pour l'affichage dans infobox et attribution à un objet réactif
-            mt_mensu = data[1,c("mensualite")]
-            mensualite(mt_mensu)
+            # Montant de la mensualité y compris assurance pour l'affichage dans infobox et attribution à un objet réactif
+            mt_mensu_yc_ass = data[1,c("mensualite_yc_ass")]
+            mensualite_yc_ass(mt_mensu_yc_ass)
+            
+            # Montant de la mensualité hors assurance pour le calcul du montant total des intérêts
+            mt_mensu_ss_ass = data[1,c("mensualite_ss_ass")]
+            mensualite_ss_ass(mt_mensu_ss_ass)
             
             # Montant total des intérêt pour l'affichage dans infobox et attribution à un objet réactif
-            interet(mt_mensu * input$duree * 12 - (input$capital_emprunte  - apport_ajuste()))
+            interet(mensualite_ss_ass() * input$duree * 12 - (input$capital_emprunte  - apport_ajuste()))
         
             # Montant de l'assurance
             assurance((input$capital_emprunte - apport_ajuste()) * input$assurance / 100 * input$duree)
@@ -254,13 +269,13 @@ server <- function(input, output, session) {
             # Résultats de la simulation et attribution à un objet réactif
             data_sa = simul_emprunt(input$capital_emprunte, input$taux, input$duree)
             
-            # Montant de la mensualité pour l'affichage dans infobox et attribution à un objet réactif
-            mt_mensu_sa = data_sa[1,c("mensualite")]
-            mensualite_sa(mt_mensu_sa)
+            # Montant de la mensualité y compris assurance pour l'affichage dans infobox et attribution à un objet réactif
+            mt_mensu_yc_ass_sa = data_sa[1,c("mensualite_yc_ass")]
+            mensualite_yc_ass_sa(mt_mensu_yc_ass_sa)
             
             # Durée alternative pour un emprunt à mensualité identique (scénario sans apport) et utilisation de l'apport pour réduire le capital emprunté
             # Ajout du max avec la mensualite_sa pour prévoir les cas où capital_emprunte - apport ajuste est négatif (quand l'utilisateur est en train de saisir une valeur par ex)
-            duree <- alt_duree(max(input$capital_emprunte - apport_ajuste(), as.numeric(mensualite_sa())), input$taux, mensualite_sa())
+            duree <- alt_duree(max(input$capital_emprunte - apport_ajuste(), as.numeric(mensualite_yc_ass_sa())), input$taux, mensualite_yc_ass_sa())
             duree_im(duree)
             
             # Résultats de la simulation et attribution à un objet réactif
@@ -268,11 +283,15 @@ server <- function(input, output, session) {
             tableau_im(data_im)
             
             # Montant de la mensualité pour l'affichage dans infobox et attribution à un objet réactif
-            mt_mensu_im = data_im[1,c("mensualite")]
-            mensualite_im(mt_mensu_im)
+            mt_mensu_yc_ass_im = data_im[1,c("mensualite_yc_ass")]
+            mensualite_yc_ass_im(mt_mensu_yc_ass_im)
+            
+            # Montant de la mensualité hors assurance pour le calcul du montant total des intérêts
+            mt_mensu_ss_ass_im = data_im[1,c("mensualite_ss_ass")]
+            mensualite_ss_ass_im(mt_mensu_ss_ass_im)
             
             # Montant total des intérêt pour l'affichage dans infobox et attribution à un objet réactif
-            interet_im(mt_mensu_im * duree_im() * 12 - (input$capital_emprunte - apport_ajuste()))
+            interet_im(mensualite_ss_ass_im() * duree_im() * 12 - (input$capital_emprunte - apport_ajuste()))
         
             # Montant de l'assurance
             assurance_im((input$capital_emprunte - apport_ajuste()) * input$assurance / 100 * duree_im())
@@ -282,19 +301,23 @@ server <- function(input, output, session) {
             data_sa = simul_emprunt(input$capital_emprunte, input$taux, input$duree)
             tableau_sa(data_sa)
             
-            # Montant de la mensualité pour l'affichage dans infobox et attribution à un objet réactif
-            mt_mensu_sa = data_sa[1,c("mensualite")]
-            mensualite_sa(mt_mensu_sa)
+            # Montant de la mensualité y compris assurance pour l'affichage dans infobox et attribution à un objet réactif
+            mt_mensu_yc_ass_sa = data_sa[1,c("mensualite_yc_ass")]
+            mensualite_yc_ass_sa(mt_mensu_yc_ass_sa)
+
+            # Montant de la mensualité hors assurance pour le calcul du montant total des intérêts
+            mt_mensu_ss_ass_sa = data_sa[1,c("mensualite_ss_ass")]
+            mensualite_ss_ass_sa(mt_mensu_ss_ass_sa)
             
             # Montant total des intérêt pour l'affichage dans infobox et attribution à un objet réactif
-            interet_sa(mt_mensu_sa * input$duree * 12 - (input$capital_emprunte))
+            interet_sa(mensualite_ss_ass_sa() * input$duree * 12 - (input$capital_emprunte))
             
             # Simulation pour un même capital emprunté des différentes mensualités possibles (durées de remboursement différentes)
             data_alt_mensu = alt_mensualite(input$capital_emprunte,input$revenu)
             tab_alt_mensu(data_alt_mensu)
             
             # Simulation pour une même mensualité des différents montants de capital empruntable possible (durées de remboursement différentes)
-            data_alt_capital = alt_capital(mt_mensu_sa)
+            data_alt_capital = alt_capital(mensualite_yc_ass_sa())
             tab_alt_capital(data_alt_capital)
 
             # Montant de l'assurance
@@ -347,25 +370,25 @@ server <- function(input, output, session) {
     output$mensualite = renderInfoBox({
         
             valueBox(
-                subtitle = paste0("Mensualité, soit un taux d'endettement de ",scales::percent(as.numeric(mensualite()/input$revenu),accuracy = 0.1)),
-                value = paste0(format(round(as.numeric(mensualite()),0),big.mark = " ")," €",
-                               " (",paste(format(round(as.numeric(mensualite() - mensualite_sa()),0),big.mark = " "),"€"),")"),
-                color = ifelse(as.numeric(mensualite()/input$revenu) <= 0.33,"green","orange"))
+                subtitle = paste0("Mensualité, soit un taux d'endettement de ",scales::percent(as.numeric(mensualite_yc_ass()/input$revenu),accuracy = 0.1)),
+                value = paste0(format(round(as.numeric(mensualite_yc_ass()),0),big.mark = " ")," €",
+                               " (",paste(format(round(as.numeric(mensualite_yc_ass() - mensualite_yc_ass_sa()),0),big.mark = " "),"€"),")"),
+                color = ifelse(as.numeric(mensualite_yc_ass()/input$revenu) <= 0.33,"green","orange"))
     })
     
     output$mensualite_im = renderInfoBox({
         valueBox(
-            subtitle = paste0("Mensualité, soit un taux d'endettement de ",scales::percent(as.numeric(mensualite_im()/input$revenu),accuracy = 0.1)),
-            value = paste(format(round(as.numeric(mensualite_im()),0),big.mark = " "),"€"),
-            color = ifelse(as.numeric(mensualite_im()/input$revenu) <= 0.33,"green","orange"))   
+            subtitle = paste0("Mensualité, soit un taux d'endettement de ",scales::percent(as.numeric(mensualite_yc_ass_im()/input$revenu),accuracy = 0.1)),
+            value = paste(format(round(as.numeric(mensualite_yc_ass_im()),0),big.mark = " "),"€"),
+            color = ifelse(as.numeric(mensualite_yc_ass_im()/input$revenu) <= 0.33,"green","orange"))   
         
     }) 
     
     output$mensualite_sa = renderInfoBox({
         valueBox(
-            subtitle = paste0("Mensualité, soit un taux d'endettement de ", scales::percent(as.numeric(mensualite_sa()/input$revenu),accuracy = 0.1)),
-            value = paste(format(round(as.numeric(mensualite_sa()),0),big.mark = " "),"€"),
-            color = ifelse(as.numeric(mensualite_sa()/input$revenu) <= 0.33,"green","orange"))   
+            subtitle = paste0("Mensualité, soit un taux d'endettement de ", scales::percent(as.numeric(mensualite_yc_ass_sa()/input$revenu),accuracy = 0.1)),
+            value = paste(format(round(as.numeric(mensualite_yc_ass_sa()),0),big.mark = " "),"€"),
+            color = ifelse(as.numeric(mensualite_yc_ass_sa()/input$revenu) <= 0.33,"green","orange"))   
     })
     
     # 5) Montant total intérêt & poids des intérêts par rapport au capital emprunté====
@@ -455,7 +478,7 @@ server <- function(input, output, session) {
     # Texte descriptif pour tableau précédent
     output$texte_alt_capital <- renderText({
         paste("Emprunt possible avec une mensualité de ",
-              easy_format(as.numeric(mensualite_sa()),type_out = "milliers", decimal = 0, suffix = " €"),
+              easy_format(as.numeric(mensualite_yc_ass_sa()),type_out = "milliers", decimal = 0, suffix = " €"),
               ":")
     })
     
